@@ -66,7 +66,7 @@ Cada ejecución normal (`python -m src.main`):
 4. **Detail** — abre la ficha solo si el evento es **nuevo** o cambió el **listing fingerprint**.
 5. **Classify** — LLM solo en **nuevos** (no pasados) o bookmarks **pending**. No reclasifica updates de listado salvo pendientes.
 6. **Write** — crea/actualiza bookmark: nota, tags AI, lista de afinidad, geo, `createdAt`, URL de tarjeta.
-7. **Past** — mueve a `📦 Conciertos · Pasados` los de listas activas cuyo fin ya pasó.
+7. **Past** — mueve a `Conciertos · Pasados` los de listas activas cuyo fin ya pasó.
 
 ### Cuándo se pide la ficha
 
@@ -98,7 +98,7 @@ Fecha visible en nota: **`dd-mm-YYYY`** (p. ej. `25-09-2026 · 22:00`).
 
 ### Título
 
-`bookmark_title`: `dd-mm-YYYY · {artist|event_name|title}`.  
+`bookmark_title`: `{L|M|X|J|V|S|D} dd-mm-YYYY · HH:MM · {artist|event_name|title}` (sin `HH:MM` si no hay hora o es `all_day`).  
 El pie de KaraKeep muestra “MMM d” (año solo si >1 año); el año en tarjeta va en el **título**.
 
 ### `createdAt`
@@ -110,10 +110,10 @@ KaraKeep ordena por `createdAt` **desc** → conciertos más recientes / próxim
 
 **Afinidad** (`karakeep.lists`):
 
-- `interested` → 🎵 Conciertos · Interesan  
-- `maybe` → 🤔 Conciertos · Quizá  
-- `ignored` → 🚫 Conciertos · Descartados  
-- `past` → 📦 Conciertos · Pasados  
+- `interested` → Conciertos · Interesan  
+- `maybe` → Conciertos · Quizá  
+- `ignored` → Conciertos · Descartados  
+- `past` → Conciertos · Pasados  
 
 **Geo** (`karakeep.geo_lists`): exactamente una por bookmark gestionado (A Coruña, Vigo, Santiago, Ourense, Lugo, Pontevedra, Ferrol, Otras Galicia).
 

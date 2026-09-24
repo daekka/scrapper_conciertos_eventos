@@ -1,0 +1,31 @@
+2026-09-24 18:53:37,824 INFO src.sync.service Inicio de sincronización
+2026-09-24 18:53:38,758 INFO httpx HTTP Request: GET https://galiciaenconcierto.com/agenda-conciertos-galicia/action~month/exact_date~1-9-2026/ "HTTP/1.1 200 OK"
+2026-09-24 18:53:38,908 INFO src.sources.galicia_en_concierto.source Vista 2026-09: 184 eventos
+2026-09-24 18:53:45,175 INFO httpx HTTP Request: GET https://galiciaenconcierto.com/agenda-conciertos-galicia/action~month/exact_date~1-10-2026/ "HTTP/1.1 200 OK"
+2026-09-24 18:53:45,332 INFO src.sources.galicia_en_concierto.source Vista 2026-10: 215 eventos
+2026-09-24 18:53:50,778 INFO httpx HTTP Request: GET https://galiciaenconcierto.com/agenda-conciertos-galicia/action~month/exact_date~1-11-2026/ "HTTP/1.1 200 OK"
+2026-09-24 18:53:50,908 INFO src.sources.galicia_en_concierto.source Vista 2026-11: 157 eventos
+2026-09-24 18:53:56,697 INFO httpx HTTP Request: GET https://galiciaenconcierto.com/agenda-conciertos-galicia/action~month/exact_date~1-12-2026/ "HTTP/1.1 200 OK"
+2026-09-24 18:53:56,741 INFO src.sources.galicia_en_concierto.source Vista 2026-12: 66 eventos
+2026-09-24 18:54:02,750 INFO httpx HTTP Request: GET https://galiciaenconcierto.com/agenda-conciertos-galicia/action~month/exact_date~1-1-2027/ "HTTP/1.1 200 OK"
+2026-09-24 18:54:02,813 INFO src.sources.galicia_en_concierto.source Vista 2027-01: 41 eventos
+2026-09-24 18:54:08,714 INFO httpx HTTP Request: GET https://galiciaenconcierto.com/agenda-conciertos-galicia/action~month/exact_date~1-2-2027/ "HTTP/1.1 200 OK"
+2026-09-24 18:54:08,762 INFO src.sources.galicia_en_concierto.source Vista 2027-02: 27 eventos
+2026-09-24 18:54:14,744 INFO httpx HTTP Request: GET https://galiciaenconcierto.com/agenda-conciertos-galicia/action~month/exact_date~1-3-2027/ "HTTP/1.1 200 OK"
+2026-09-24 18:54:14,772 INFO src.sources.galicia_en_concierto.source Vista 2027-03: 15 eventos
+2026-09-24 18:54:20,760 INFO httpx HTTP Request: GET https://galiciaenconcierto.com/agenda-conciertos-galicia/action~month/exact_date~1-4-2027/ "HTTP/1.1 200 OK"
+2026-09-24 18:54:20,777 INFO src.sources.galicia_en_concierto.source Vista 2027-04: 10 eventos
+2026-09-24 18:54:26,853 INFO httpx HTTP Request: GET https://galiciaenconcierto.com/agenda-conciertos-galicia/action~month/exact_date~1-5-2027/ "HTTP/1.1 200 OK"
+2026-09-24 18:54:26,867 INFO src.sources.galicia_en_concierto.source Vista 2027-05: 5 eventos
+2026-09-24 18:54:32,813 INFO httpx HTTP Request: GET https://galiciaenconcierto.com/agenda-conciertos-galicia/action~month/exact_date~1-6-2027/ "HTTP/1.1 200 OK"
+2026-09-24 18:54:32,826 INFO src.sources.galicia_en_concierto.source Vista 2027-06: 4 eventos
+2026-09-24 18:54:38,826 INFO httpx HTTP Request: GET https://galiciaenconcierto.com/agenda-conciertos-galicia/action~month/exact_date~1-7-2027/ "HTTP/1.1 200 OK"
+2026-09-24 18:54:38,849 INFO src.sources.galicia_en_concierto.source Vista 2027-07: 4 eventos
+2026-09-24 18:54:44,834 INFO httpx HTTP Request: GET https://galiciaenconcierto.com/agenda-conciertos-galicia/action~month/exact_date~1-8-2027/ "HTTP/1.1 200 OK"
+2026-09-24 18:54:44,848 INFO src.sources.galicia_en_concierto.source Vista 2027-08: 0 eventos
+2026-09-24 18:54:44,850 INFO src.sources.galicia_en_concierto.source Descubiertos 590 eventos únicos (137 pasados omitidos del listado)
+2026-09-24 18:54:44,850 INFO src.sync.service Conciertos encontrados: 590
+2026-09-24 18:54:44,855 INFO httpx HTTP Request: GET http://10.10.0.53:3000/api/v1/lists "HTTP/1.1 200 OK"
+2026-09-24 18:54:44,980 INFO httpx HTTP Request: GET http://10.10.0.53:3000/api/v1/lists/vutrlquttrto97du2bup3w8j/bookmarks?limit=100 "HTTP/1.1 200 OK"
+2026-09-24 18:54:45,050 INFO httpx HTTP Request: GET http://10.10.0.53:3000/api/v1/lists/vutrlquttrto97du2bup3w8j/bookmarks?limit=100&cursor=y6n7hy9yro2gmf4juptn1lq1_2026-10-30T19%3A30%3A00.000Z "HTTP/1.1 200 OK"
+2026-09-24 18:54:45,140 INFO httpx HTTP Request: GET http://10.10.0.53:3000/api/v1/lists/ibg88tw9b9ldpuaki86edzt8/bookmarks?limit=100 "HTTP/1.1 200 OK"

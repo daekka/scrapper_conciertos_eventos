@@ -437,7 +437,7 @@ def test_dry_run_logs_planned_writes_including_past_move(caplog):
     assert _service(source, repo, classifier).run(now=NOW, dry_run=True) == 0
     assert classifier.calls == 0
     assert "[DRY-RUN] Crearía bookmark:" in caplog.text
-    assert "📦 Conciertos · Pasados" in caplog.text
+    assert "Conciertos · Pasados" in caplog.text
     assert "lista geográfica" in caplog.text.lower() or "Añadiría a lista geográfica" in caplog.text
     assert "[DRY-RUN] Tags:" in caplog.text
     assert "se omite clasificación" in caplog.text

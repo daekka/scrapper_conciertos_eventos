@@ -5,6 +5,13 @@ from zoneinfo import ZoneInfo
 
 DEFAULT_CONCERT_TZ = "Europe/Madrid"
 _NOON = time(12, 0, 0)
+# weekday(): lunes=0 … domingo=6
+_WEEKDAY_LETTERS = ("L", "M", "X", "J", "V", "S", "D")
+
+
+def weekday_letter(day: date) -> str:
+    """Inicial del día de la semana (L/M/X/J/V/S/D)."""
+    return _WEEKDAY_LETTERS[day.weekday()]
 
 
 def format_concert_day(day: date) -> str:
@@ -32,7 +39,7 @@ def format_concert_when(concert) -> str:
 
 
 def bookmark_title(concert) -> str:
-    """Título de tarjeta: dd-mm-YYYY · nombre (año visible en la UI)."""
+    """Título de tarjeta: L dd-mm-YYYY · HH:MM · nombre (año visible en la UI)."""
     name = (
         getattr(concert, "artist", None)
         or getattr(concert, "event_name", None)
@@ -42,7 +49,13 @@ def bookmark_title(concert) -> str:
     day: date | None = getattr(concert, "date", None)
     if day is None:
         return str(name)[:1000]
-    return f"{format_concert_day(day)} · {name}"[:1000]
+    parts = [f"{weekday_letter(day)} {format_concert_day(day)}"]
+    if not getattr(concert, "all_day", False):
+        start = getattr(concert, "start_time", None)
+        if start:
+            parts.append(start.strftime("%H:%M"))
+    parts.append(str(name))
+    return " · ".join(parts)[:1000]
 
 
 def concert_created_at(

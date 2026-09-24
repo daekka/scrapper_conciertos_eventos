@@ -5,7 +5,7 @@ source:
   name: galicia_en_concierto
   base_url: https://galiciaenconcierto.com
   agenda_path: /agenda-conciertos-galicia/
-  months_ahead: 2
+  months_ahead: 12
   request_delay: 1.0
   timeout: 20
   retries: 3
@@ -16,19 +16,20 @@ classification:
 
 karakeep:
   lists:
-    interested: "🎵 Conciertos · Interesan"
-    maybe: "🤔 Conciertos · Quizá"
-    ignored: "🚫 Conciertos · Descartados"
-    past: "📦 Conciertos · Pasados"
+    # Nombres sin emoji: en KaraKeep el icono va aparte del name.
+    interested: "Conciertos · Interesan"
+    maybe: "Conciertos · Quizá"
+    ignored: "Conciertos · Descartados"
+    past: "Conciertos · Pasados"
   geo_lists:
-    geo_acoruna: "📍 Conciertos · A Coruña"
-    geo_vigo: "📍 Conciertos · Vigo"
-    geo_santiago: "📍 Conciertos · Santiago"
-    geo_ourense: "📍 Conciertos · Ourense"
-    geo_lugo: "📍 Conciertos · Lugo"
-    geo_pontevedra: "📍 Conciertos · Pontevedra"
-    geo_ferrol: "📍 Conciertos · Ferrol"
-    geo_other: "📍 Conciertos · Otras Galicia"
+    geo_acoruna: "Conciertos · A Coruña"
+    geo_vigo: "Conciertos · Vigo"
+    geo_santiago: "Conciertos · Santiago"
+    geo_ourense: "Conciertos · Ourense"
+    geo_lugo: "Conciertos · Lugo"
+    geo_pontevedra: "Conciertos · Pontevedra"
+    geo_ferrol: "Conciertos · Ferrol"
+    geo_other: "Conciertos · Otras Galicia"
 
 tags:
   base:

@@ -44,7 +44,8 @@ def test_bookmark_title_and_when_use_day_month_year():
         title="Lions Way",
         artist="Lions Way",
     )
-    assert bookmark_title(concert) == "25-09-2026 · Lions Way"
+    # 2026-09-25 es viernes
+    assert bookmark_title(concert) == "V 25-09-2026 · 22:00 · Lions Way"
     assert format_concert_when(concert) == "25-09-2026 · 22:00"
     note = build_note(
         concert,
@@ -59,6 +60,22 @@ def test_bookmark_title_and_when_use_day_month_year():
     )
     assert "📅 **Cuándo:** 25-09-2026 · 22:00" in note
     assert "2026-09-25" not in note.split("<!-- gca:")[0]
+
+
+def test_bookmark_title_without_time_omits_clock():
+    from src.normalize.concert_datetime import bookmark_title
+
+    concert = _concert(date=date(2026, 9, 25), start_time=None, title="Fest")
+    assert bookmark_title(concert) == "V 25-09-2026 · Fest"
+
+    all_day = _concert(
+        date=date(2026, 9, 28),
+        start_time=time(10, 0),
+        all_day=True,
+        title="Festival",
+    )
+    # 2026-09-28 es lunes
+    assert bookmark_title(all_day) == "L 28-09-2026 · Festival"
 
 
 def test_winter_cet_with_time():
