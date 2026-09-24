@@ -1,0 +1,1 @@
+logger.error("Fallo del proveedor LLM en %s", concert.source_url)

@@ -1,0 +1,1 @@
+"""Clasificación desacoplada del proveedor."""

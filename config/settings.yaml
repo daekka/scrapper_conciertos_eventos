@@ -1,0 +1,57 @@
+timezone: Europe/Madrid
+user_agent: "galicia-concert-agent/0.1 (+local-batch)"
+
+source:
+  name: galicia_en_concierto
+  base_url: https://galiciaenconcierto.com
+  agenda_path: /agenda-conciertos-galicia/
+  months_ahead: 2
+  request_delay: 1.0
+  timeout: 20
+  retries: 3
+  backoff_seconds: 1.5
+
+classification:
+  enabled: true
+
+karakeep:
+  lists:
+    interested: "🎵 Conciertos · Interesan"
+    maybe: "🤔 Conciertos · Quizá"
+    ignored: "🚫 Conciertos · Descartados"
+    past: "📦 Conciertos · Pasados"
+  geo_lists:
+    geo_acoruna: "📍 Conciertos · A Coruña"
+    geo_vigo: "📍 Conciertos · Vigo"
+    geo_santiago: "📍 Conciertos · Santiago"
+    geo_ourense: "📍 Conciertos · Ourense"
+    geo_lugo: "📍 Conciertos · Lugo"
+    geo_pontevedra: "📍 Conciertos · Pontevedra"
+    geo_ferrol: "📍 Conciertos · Ferrol"
+    geo_other: "📍 Conciertos · Otras Galicia"
+
+tags:
+  base:
+    - concert
+    - galicia
+  allow_suggested:
+    - concert
+    - galicia
+    - acoruna
+    - santiago
+    - vigo
+    - pontevedra
+    - ourense
+    - lugo
+    - ferrol
+    - ogrove
+    - indie
+    - rock
+    - electronica
+    - folk
+    - pop
+    - urbana
+    - gratis
+    - festival
+    - aire-libre
+    - artista-gallego
