@@ -89,6 +89,16 @@ class MemoryRepo:
         bookmark.list_keys -= {"interested", "maybe", "ignored"}
         bookmark.list_keys.add("past")
 
+    def delete_bookmark(self, bookmark):
+        self.mutations.append("delete")
+        self.bookmarks.pop(bookmark.url, None)
+        for key, item in list(self.bookmarks.items()):
+            if item.id == bookmark.id:
+                self.bookmarks.pop(key, None)
+
+    def list_bookmarks(self, list_key):
+        return [b for b in self.bookmarks.values() if list_key in b.list_keys]
+
     def assign_list(self, bookmark, list_key):
         self.mutations.append("assign_list")
         bookmark.list_keys.add(list_key)
@@ -340,7 +350,7 @@ def test_past_concert_moves_list_without_deleting():
     from src.normalize.geo import GEO_VIGO
     from src.storage.bookmark_note import build_note
 
-    event = _event(date=date(2026, 1, 2), start_time=time(20, 0))
+    event = _event(date=date(2026, 9, 20), start_time=time(20, 0))
     concert = _concert(event)
     note = build_note(concert, _result(), pending=False)
     bookmark = KnownBookmark(
@@ -356,10 +366,32 @@ def test_past_concert_moves_list_without_deleting():
     assert _service(source, repo, FakeClassifier(_result())).run(now=NOW) == 0
     assert bookmark.list_keys == {"past", GEO_VIGO}
     assert bookmark.id == "old"
+    assert "delete" not in repo.mutations
+
+
+def test_stale_past_concert_is_deleted():
+    from src.normalize.geo import GEO_VIGO
+    from src.storage.bookmark_note import build_note
+
+    event = _event(date=date(2026, 9, 10), start_time=time(20, 0))
+    note = build_note(_concert(event), _result(), pending=False)
+    bookmark = KnownBookmark(
+        id="stale",
+        url=event.source_url,
+        title=event.title,
+        note=note,
+        tags=[BookmarkTag(name="concert", attached_by="ai")],
+        list_keys={"past", GEO_VIGO},
+    )
+    repo = MemoryRepo([bookmark])
+    source = FakeSource([], {})
+    assert _service(source, repo, FakeClassifier(_result())).run(now=NOW) == 0
+    assert "delete" in repo.mutations
+    assert event.source_url not in repo.bookmarks
 
 
 def test_new_past_concert_skips_classifier():
-    event = _event(date=date(2026, 1, 2), start_time=time(20, 0))
+    event = _event(date=date(2026, 9, 20), start_time=time(20, 0))
     source = FakeSource([event], {event.source_id: _concert(event)})
     repo = MemoryRepo()
     classifier = FakeClassifier(_result())
@@ -373,6 +405,17 @@ def test_new_past_concert_skips_classifier():
 
     assert len(bookmark.list_keys & GEO_LIST_KEYS) == 1
 
+
+def test_new_stale_concert_is_not_created():
+    event = _event(date=date(2026, 9, 10), start_time=time(20, 0))
+    source = FakeSource([event], {event.source_id: _concert(event)})
+    repo = MemoryRepo()
+    classifier = FakeClassifier(_result())
+    assert _service(source, repo, classifier).run(now=NOW) == 0
+    assert source.detail_ids == [event.source_id]
+    assert classifier.calls == 0
+    assert repo.bookmarks == {}
+    assert "create" not in repo.mutations
 
 def _many_events(count: int) -> tuple[list[DiscoveredEvent], dict[str, Concert]]:
     events = []
@@ -429,7 +472,7 @@ def test_dry_run_with_ai_classifies_but_never_writes():
 def test_dry_run_logs_planned_writes_including_past_move(caplog):
     import logging
 
-    event = _event(date=date(2026, 1, 2), start_time=time(20, 0))
+    event = _event(date=date(2026, 9, 20), start_time=time(20, 0))
     source = FakeSource([event], {event.source_id: _concert(event)})
     repo = MemoryRepo()
     classifier = FakeClassifier(_result())
@@ -449,7 +492,7 @@ def test_dry_run_logs_move_for_existing_past_bookmark(caplog):
     import logging
     from src.storage.bookmark_note import build_note
 
-    event = _event(date=date(2026, 1, 2), start_time=time(20, 0))
+    event = _event(date=date(2026, 9, 20), start_time=time(20, 0))
     note = build_note(_concert(event), _result(), pending=False)
     bookmark = KnownBookmark(
         id="old",
@@ -467,6 +510,28 @@ def test_dry_run_logs_move_for_existing_past_bookmark(caplog):
     assert repo.mutations == []
     assert bookmark.list_keys == {"interested"}
 
+
+def test_dry_run_logs_delete_for_stale_bookmark(caplog):
+    import logging
+    from src.storage.bookmark_note import build_note
+
+    event = _event(date=date(2026, 9, 10), start_time=time(20, 0))
+    note = build_note(_concert(event), _result(), pending=False)
+    bookmark = KnownBookmark(
+        id="stale",
+        url=event.source_url,
+        title=event.title,
+        note=note,
+        tags=[BookmarkTag(name="concert", attached_by="ai")],
+        list_keys={"past"},
+    )
+    repo = MemoryRepo([bookmark])
+    source = FakeSource([], {})
+    caplog.set_level(logging.INFO)
+    assert _service(source, repo, FakeClassifier(_result())).run(now=NOW, dry_run=True) == 0
+    assert "[DRY-RUN] Borraría bookmark:" in caplog.text
+    assert repo.mutations == []
+    assert event.source_url in repo.bookmarks
 
 def test_dry_run_update_does_not_mutate_bookmark():
     event = _event()

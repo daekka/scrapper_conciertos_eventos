@@ -30,7 +30,7 @@ from src.storage.bookmark_note import (
 from src.storage.karakeep import KaraKeepClient
 from src.storage.lists import PENDING_TAG, merge_existing_ai_tags, tags_for_concert
 from src.storage.models import BookmarkTag, KnownBookmark
-from src.sync.past import is_past
+from src.sync.past import is_past, is_stale
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +53,7 @@ class RunStats:
     skipped_unchanged: int = 0
     details_fetched: int = 0
     past: int = 0
+    deleted: int = 0
     errors: int = 0
     pending: int = 0
     llm_transport_failures: int = 0
@@ -175,6 +176,16 @@ class SyncService:
                 result = None
                 pending_flag = True
                 list_key = None
+                if is_stale(
+                    concert, moment, self.settings.past_retention_days
+                ):
+                    logger.info(
+                        "Concierto caducado (> %s días); no se crea: %s",
+                        self.settings.past_retention_days,
+                        concert.source_url,
+                    )
+                    stats.new -= 1
+                    continue
                 if is_past(concert, moment):
                     pending_flag = False
                     list_key = "past"
@@ -312,6 +323,13 @@ class SyncService:
                     logger.error("No se pudo reclasificar %s: %s", bookmark.id, exc)
 
         stats.past += self._move_past(watched, moment, dry_run=dry_run)
+        stats.deleted += self._purge_stale(
+            index=index,
+            watched=watched,
+            now=moment,
+            dry_run=dry_run,
+            limit=limit,
+        )
         self._log_end(stats, started)
         if (
             stats.llm_attempts
@@ -553,6 +571,45 @@ class SyncService:
             moved += 1
         return moved
 
+    def _purge_stale(
+        self,
+        *,
+        index: dict[str, KnownBookmark],
+        watched: list[KnownBookmark],
+        now: datetime,
+        dry_run: bool,
+        limit: int | None,
+    ) -> int:
+        assert self.repo is not None
+        candidates: dict[str, KnownBookmark] = {}
+        for bookmark in index.values():
+            candidates[bookmark.id] = bookmark
+        for bookmark in watched:
+            candidates[bookmark.id] = bookmark
+        if limit is not None:
+            try:
+                for bookmark in self.repo.list_bookmarks("past"):
+                    candidates[bookmark.id] = bookmark
+            except KaraKeepError as exc:
+                logger.error("No se pudo cargar la lista Pasados para purga: %s", exc)
+        deleted = 0
+        retention = self.settings.past_retention_days
+        for bookmark in list(candidates.values()):
+            concert = parse_stored_concert(bookmark.note)
+            if concert is None or not is_stale(concert, now, retention):
+                continue
+            if dry_run:
+                logger.info("[DRY-RUN] Borraría bookmark: %s", bookmark.url)
+            else:
+                try:
+                    self.repo.delete_bookmark(bookmark)
+                    logger.info("Bookmark borrado (caducado): %s", bookmark.url)
+                except KaraKeepError as exc:
+                    logger.error("No se pudo borrar %s: %s", bookmark.url, exc)
+                    continue
+            deleted += 1
+        return deleted
+
     @staticmethod
     def _same_listing(event: DiscoveredEvent, bookmark: KnownBookmark) -> bool:
         stored = parse_meta(bookmark.note).get("listing_fp")
@@ -570,7 +627,7 @@ class SyncService:
         elapsed = (datetime.now(timezone.utc) - started).total_seconds()
         logger.info(
             "Fin: encontrados=%s seleccionados=%s nuevos=%s actualizados=%s clasificados=%s "
-            "ignorados=%s sin_cambios=%s fichas=%s pasados=%s pendientes=%s "
+            "ignorados=%s sin_cambios=%s fichas=%s pasados=%s borrados=%s pendientes=%s "
             "errores=%s duración=%.2fs",
             stats.discovered,
             stats.selected,
@@ -581,6 +638,7 @@ class SyncService:
             stats.skipped_unchanged,
             stats.details_fetched,
             stats.past,
+            stats.deleted,
             stats.pending,
             stats.errors,
             elapsed,

@@ -33,6 +33,18 @@ def is_past(concert: Concert, now: datetime) -> bool:
     return bound < current
 
 
+def is_stale(concert: Concert, now: datetime, retention_days: int) -> bool:
+    """True si el fin del concierto lleva más de ``retention_days`` días."""
+    bound = event_end_bound(concert)
+    if bound is None:
+        return False
+    if retention_days < 0:
+        raise ValueError("retention_days debe ser >= 0")
+    tz = bound.tzinfo or ZoneInfo("Europe/Madrid")
+    current = now.astimezone(tz) if now.tzinfo else now.replace(tzinfo=tz)
+    return bound + timedelta(days=retention_days) < current
+
+
 def is_past_bounds(
     *,
     start: date | None,

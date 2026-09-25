@@ -136,6 +136,26 @@ def _create_with_crawl(
 
 
 @respx.mock
+def test_delete_bookmark_sends_delete():
+    delete_route = respx.delete(f"{BASE}/api/v1/bookmarks/bm-1").mock(
+        return_value=httpx.Response(204)
+    )
+    client = _client()
+    bookmark = KnownBookmark(
+        id="bm-1",
+        url=EVENT_URL,
+        title="Banda",
+        note="nota",
+        tags=[BookmarkTag(name="concert", attached_by="ai")],
+        list_keys={"past"},
+    )
+    client.delete_bookmark(bookmark)
+    assert delete_route.called
+    assert delete_route.calls.last.request.method == "DELETE"
+    client.http.close()
+
+
+@respx.mock
 def test_create_sends_concert_created_at_and_keeps_banner_flow():
     create_route = _mock_create()
     _mock_tags_and_list()

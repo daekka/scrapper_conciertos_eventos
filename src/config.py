@@ -34,6 +34,7 @@ class Settings:
     geo_lists: dict[str, str]
     base_tags: list[str]
     allow_suggested: list[str]
+    past_retention_days: int = 7
     project_root: Path = field(default_factory=lambda: PROJECT_ROOT)
 
     @property
@@ -54,9 +55,13 @@ def load_settings(root: Path | None = None) -> Settings:
     raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     try:
         source_raw = raw["source"]
-        lists = raw["karakeep"]["lists"]
-        geo_raw = (raw.get("karakeep") or {}).get("geo_lists") or {}
+        karakeep_raw = raw["karakeep"]
+        lists = karakeep_raw["lists"]
+        geo_raw = karakeep_raw.get("geo_lists") or {}
         tags = raw.get("tags") or {}
+        retention = int(karakeep_raw.get("past_retention_days", 7))
+        if retention < 0:
+            raise ConfigError("karakeep.past_retention_days debe ser >= 0")
         geo_lists = {
             "geo_acoruna": str(geo_raw["geo_acoruna"]),
             "geo_vigo": str(geo_raw["geo_vigo"]),
@@ -90,6 +95,7 @@ def load_settings(root: Path | None = None) -> Settings:
             geo_lists=geo_lists,
             base_tags=[str(t) for t in tags.get("base", [])],
             allow_suggested=[str(t) for t in tags.get("allow_suggested", [])],
+            past_retention_days=retention,
             project_root=project_root,
         )
     except (KeyError, TypeError, ValueError) as exc:

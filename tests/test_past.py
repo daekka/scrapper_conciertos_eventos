@@ -1,7 +1,8 @@
 from datetime import date, datetime, time
 from zoneinfo import ZoneInfo
 
-from src.sync.past import is_past_bounds
+from src.models.discovered import Concert
+from src.sync.past import is_past_bounds, is_stale
 
 TZ = "Europe/Madrid"
 NOW = datetime(2026, 9, 24, 0, 30, tzinfo=ZoneInfo(TZ))
@@ -80,3 +81,34 @@ def test_unknown_date_is_not_past():
         )
         is False
     )
+
+
+def _concert_for_stale(*, day: date, start: time) -> Concert:
+    return Concert(
+        source="test",
+        source_id="t",
+        source_url="https://example.com/evento/t/",
+        title="t",
+        date=day,
+        start_time=start,
+        timezone=TZ,
+        scraped_at=NOW,
+    )
+
+
+def test_is_stale_false_at_exact_retention_boundary():
+    concert = _concert_for_stale(day=date(2026, 9, 16), start=time(20, 0))
+    now = datetime(2026, 9, 23, 20, 0, tzinfo=ZoneInfo(TZ))
+    assert is_stale(concert, now, retention_days=7) is False
+
+
+def test_is_stale_true_just_after_retention():
+    concert = _concert_for_stale(day=date(2026, 9, 16), start=time(20, 0))
+    now = datetime(2026, 9, 23, 20, 0, 1, tzinfo=ZoneInfo(TZ))
+    assert is_stale(concert, now, retention_days=7) is True
+
+
+def test_is_stale_false_within_retention_window():
+    concert = _concert_for_stale(day=date(2026, 9, 20), start=time(20, 0))
+    now = datetime(2026, 9, 23, 12, 0, tzinfo=ZoneInfo(TZ))
+    assert is_stale(concert, now, retention_days=7) is False

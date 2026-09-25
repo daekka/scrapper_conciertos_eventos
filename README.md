@@ -42,6 +42,7 @@ cd /opt/scripts/galicia-concert-agent
 5. Clasifica con el LLM únicamente los conciertos nuevos (o los que quedaron pendientes).
 6. Crea o actualiza el bookmark. No borra eventos que desaparecen de la fuente.
 7. Mueve a `Conciertos · Pasados` los que ya terminaron.
+8. Borra bookmarks cuyo fin del concierto lleve más de 7 días (`karakeep.past_retention_days`).
 
 El perfil musical se edita en `config/taste.md`. Los secretos viven solo en `.env`. El resto de opciones está en `config/settings.yaml`. Si están las cuatro variables `AZURE_OPENAI_*`, el clasificador usa Azure OpenAI (`api-key`); si no, cae al endpoint OpenAI-compatible (`OPENAI_*`).
 

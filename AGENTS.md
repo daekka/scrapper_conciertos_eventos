@@ -8,6 +8,7 @@ Job **batch** que descubre conciertos futuros en [Galicia en Concierto](https://
 
 - Entrada: `python -m src.main` (siempre con el venv del proyecto).
 - No borra bookmarks si un evento desaparece de la agenda.
+- Sí borra bookmarks cuyo fin del concierto lleve más de `karakeep.past_retention_days` (por defecto 7).
 - Secretos solo en `.env` (nunca commitear). Perfil musical en `config/taste.md`. Resto en `config/settings.yaml`.
 
 ## Reglas operativas (obligatorias)
@@ -67,6 +68,7 @@ Cada ejecución normal (`python -m src.main`):
 5. **Classify** — LLM solo en **nuevos** (no pasados) o bookmarks **pending**. No reclasifica updates de listado salvo pendientes.
 6. **Write** — crea/actualiza bookmark: nota, tags AI, lista de afinidad, geo, `createdAt`, URL de tarjeta.
 7. **Past** — mueve a `Conciertos · Pasados` los de listas activas cuyo fin ya pasó.
+8. **Purge** — borra bookmarks cuyo fin lleve más de `past_retention_days` (default 7).
 
 ### Cuándo se pide la ficha
 
@@ -113,7 +115,7 @@ KaraKeep ordena por `createdAt` **desc** → conciertos más recientes / próxim
 - `interested` → Conciertos · Interesan  
 - `maybe` → Conciertos · Quizá  
 - `ignored` → Conciertos · Descartados  
-- `past` → Conciertos · Pasados  
+- `past` → Conciertos · Pasados (cuarentena hasta `past_retention_days`; después se borran)  
 
 **Geo** (`karakeep.geo_lists`): exactamente una por bookmark gestionado (A Coruña, Vigo, Santiago, Ourense, Lugo, Pontevedra, Ferrol, Otras Galicia).
 
@@ -181,6 +183,7 @@ Sync “real” (escribe bookmarks): `./.venv/bin/python -m src.main` — no eje
 - Perfil: `config/taste.md`.
 - Resultados: `INTERESTED` | `MAYBE` | `IGNORE` → listas interested / maybe / ignored.
 - Nuevos ya pasados → lista `past` sin LLM.
+- Nuevos caducados (> `past_retention_days`) → no se crean.
 - Clasificación inválida o ausente → pendiente (`pending-classification` + meta `pending`); **no** tumba el lote.
 - En updates por cambio de listado se **preserva** el bloque de análisis; no se reclasifica salvo pending.
 - Géneros musicales del LLM se aplican al `Concert` al clasificar.
@@ -218,6 +221,7 @@ Crear `var/state` antes. Usar rutas absolutas y el intérprete de `.venv`.
 | Forma de la nota | `src/storage/bookmark_note.py` |
 | API KaraKeep | `src/storage/karakeep.py` |
 | Orquestación sync | `src/sync/service.py` |
+| Pasados / retención / purga | `src/sync/past.py`, `past_retention_days` en `settings.yaml`, `_purge_stale` |
 | Flags CLI | `src/main.py` |
 
 ## README vs este archivo

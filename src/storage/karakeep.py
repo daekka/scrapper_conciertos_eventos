@@ -240,6 +240,22 @@ class KaraKeepClient:
             self._add_to_list(bookmark.id, "past")
             bookmark.list_keys.add("past")
 
+    def delete_bookmark(self, bookmark: KnownBookmark) -> None:
+        self._send("DELETE", f"/bookmarks/{bookmark.id}")
+
+    def list_bookmarks(self, list_key: str) -> list[KnownBookmark]:
+        """Bookmarks de una lista gestionada (paginado)."""
+        self._resolve_lists(create_missing=False)
+        list_id = self._list_ids.get(list_key)
+        if not list_id:
+            raise KaraKeepError(f"Lista desconocida: {list_key}")
+        found: list[KnownBookmark] = []
+        for bookmark in self._paginate(f"/lists/{list_id}/bookmarks"):
+            known = self._parse_bookmark(bookmark, {list_key})
+            if known is not None:
+                found.append(known)
+        return found
+
     def assign_list(self, bookmark: KnownBookmark, list_key: str) -> None:
         if list_key not in bookmark.list_keys:
             self._add_to_list(bookmark.id, list_key)
