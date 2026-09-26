@@ -18,6 +18,8 @@ def test_help_runs():
     assert "--dry-run" in result.stdout
     assert "--scrape-only" in result.stdout
     assert "--no-ai" in result.stdout
+    assert "--pipeline" in result.stdout
+    assert "all" in result.stdout
     assert "--geo-backfill" in result.stdout
     assert "--cookie-cleanup" in result.stdout
     assert "--date-backfill" in result.stdout

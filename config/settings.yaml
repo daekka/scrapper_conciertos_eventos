@@ -58,3 +58,38 @@ tags:
     - festival
     - aire-libre
     - artista-gallego
+
+# Pipeline paralelo: ocio/cultura Coruña (RSS). Listas disjuntas de Conciertos · …
+pipelines:
+  coruna:
+    feed_url: https://www.coruna.gal/web/es/rss/ociocultura
+    request_delay: 1.0
+    timeout: 20
+    retries: 3
+    backoff_seconds: 1.5
+    past_retention_days: 7
+    lists:
+      ocio: "Ocio Coruña"
+      past: "Ocio Coruña · Pasados"
+    tags:
+      base:
+        - ocio
+        - acoruna
+      allow_suggested:
+        - ocio
+        - acoruna
+        - cine
+        - teatro
+        - concertos
+        - danza
+        - exposicions
+        - cursos
+        - conferencias
+        - deporte
+        - espectaculos
+        - familias
+        - festas
+        - visitas
+        - comic
+        - otros
+        - gratis

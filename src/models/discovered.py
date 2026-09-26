@@ -29,6 +29,8 @@ class DiscoveredEvent(BaseModel):
     all_day: bool = False
     ticket_url: str | None = None
     category_label: str | None = None
+    keywords: list[str] = Field(default_factory=list)
+    image_url: str | None = None
     scraped_at: DateTime
 
 

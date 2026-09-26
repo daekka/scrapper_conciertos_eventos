@@ -46,6 +46,38 @@ class Settings:
         return {**self.lists, **self.geo_lists}
 
 
+CORUNA_LIST_KEYS: tuple[str, ...] = ("ocio", "past")
+
+OCIO_LIST_KEY = "ocio"
+
+
+@dataclass
+class CorunaSettings:
+    """Pipeline aislado de ocio/cultura Coruña (una lista activa + pasados)."""
+
+    timezone: str
+    user_agent: str
+    feed_url: str
+    request_delay: float
+    timeout: float
+    retries: int
+    backoff_seconds: float
+    lists: dict[str, str]
+    base_tags: list[str] = field(default_factory=list)
+    allow_suggested: list[str] = field(default_factory=list)
+    past_retention_days: int = 7
+    project_root: Path = field(default_factory=lambda: PROJECT_ROOT)
+
+    @property
+    def all_list_names(self) -> dict[str, str]:
+        return dict(self.lists)
+
+    @property
+    def active_list_keys(self) -> frozenset[str]:
+        """Claves de listas activas (sin past)."""
+        return frozenset(k for k in self.lists if k != "past")
+
+
 def load_settings(root: Path | None = None) -> Settings:
     project_root = (root or PROJECT_ROOT).resolve()
     load_dotenv(project_root / ".env")
@@ -101,6 +133,41 @@ def load_settings(root: Path | None = None) -> Settings:
     except (KeyError, TypeError, ValueError) as exc:
         raise ConfigError(f"config/settings.yaml inválido: {exc}") from exc
     return settings
+
+
+def load_coruna_settings(root: Path | None = None) -> CorunaSettings:
+    """Carga el pipeline ``pipelines.coruna`` (lista única + pasados, sin geo)."""
+    project_root = (root or PROJECT_ROOT).resolve()
+    load_dotenv(project_root / ".env")
+    path = project_root / "config" / "settings.yaml"
+    if not path.is_file():
+        raise ConfigError(f"No se encuentra la configuración: {path}")
+    raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    try:
+        pipelines = raw.get("pipelines") or {}
+        coruna_raw = pipelines["coruna"]
+        lists_raw = coruna_raw["lists"]
+        tags = coruna_raw.get("tags") or {}
+        retention = int(coruna_raw.get("past_retention_days", 7))
+        if retention < 0:
+            raise ConfigError("pipelines.coruna.past_retention_days debe ser >= 0")
+        lists = {key: str(lists_raw[key]) for key in CORUNA_LIST_KEYS}
+        return CorunaSettings(
+            timezone=str(raw["timezone"]),
+            user_agent=str(raw["user_agent"]),
+            feed_url=str(coruna_raw["feed_url"]).strip(),
+            request_delay=float(coruna_raw.get("request_delay", 1.0)),
+            timeout=float(coruna_raw.get("timeout", 20)),
+            retries=int(coruna_raw.get("retries", 3)),
+            backoff_seconds=float(coruna_raw.get("backoff_seconds", 1.5)),
+            lists=lists,
+            base_tags=[str(t) for t in tags.get("base", [])],
+            allow_suggested=[str(t) for t in tags.get("allow_suggested", [])],
+            past_retention_days=retention,
+            project_root=project_root,
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ConfigError(f"pipelines.coruna inválido en settings.yaml: {exc}") from exc
 
 
 def karakeep_credentials() -> tuple[str, str]:

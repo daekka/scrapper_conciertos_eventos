@@ -11,6 +11,7 @@ def _norm(value: str | None) -> str:
 
 def listing_fingerprint(event: DiscoveredEvent) -> str:
     """Huella del listado. No incluye descripción: la agenda no la trae completa."""
+    keywords = getattr(event, "keywords", None) or []
     parts = [
         _norm(event.title),
         event.date.isoformat() if event.date else "",
@@ -22,5 +23,10 @@ def listing_fingerprint(event: DiscoveredEvent) -> str:
         event.ticket_url or "",
         "1" if event.all_day else "0",
     ]
+    if keywords:
+        parts.append(",".join(sorted(_norm(k) for k in keywords if k)))
+    image_url = getattr(event, "image_url", None) or ""
+    if image_url:
+        parts.append(_norm(image_url))
     digest = hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()
     return digest[:16]

@@ -64,6 +64,40 @@ def _filename_for(url: str, content_type: str | None) -> str:
     return path[:180]
 
 
+def fetch_image_bytes(
+    http: HttpClient,
+    image_url: str | None,
+) -> tuple[bytes, str, str] | None:
+    """Descarga una imagen remota. Devuelve (bytes, filename, content_type) o None."""
+    page = normalize_ticket_url(image_url)
+    if not page:
+        return None
+    try:
+        response = http.request_json(
+            "GET",
+            page,
+            headers={"User-Agent": BROWSER_UA, "Accept": "image/*,*/*;q=0.8"},
+        )
+    except HttpRequestError as exc:
+        logger.info("No se pudo descargar imagen %s: %s", page, exc)
+        return None
+    if response.status_code >= 400 or not response.content:
+        logger.info("Imagen HTTP %s en %s", response.status_code, page)
+        return None
+    content_type = (response.headers.get("content-type") or "").split(";")[0].strip()
+    if content_type and not content_type.startswith("image/"):
+        if not _IMAGE_EXT.search(page):
+            logger.info("Respuesta no-imagen (%s) en %s", content_type, page)
+            return None
+        content_type = "image/jpeg"
+    if not content_type:
+        content_type = "image/jpeg"
+    if len(response.content) < 2000:
+        logger.info("Imagen demasiado pequeña (%s B) en %s", len(response.content), page)
+        return None
+    return response.content, _filename_for(page, content_type), content_type
+
+
 def fetch_ticket_poster(
     http: HttpClient,
     ticket_url: str | None,
@@ -85,29 +119,4 @@ def fetch_ticket_poster(
     if not image_url:
         logger.info("Sin og:image en entradas: %s", page)
         return None
-    try:
-        response = http.request_json(
-            "GET",
-            image_url,
-            headers={"User-Agent": BROWSER_UA, "Accept": "image/*,*/*;q=0.8"},
-        )
-    except HttpRequestError as exc:
-        logger.info("No se pudo descargar cartel %s: %s", image_url, exc)
-        return None
-    if response.status_code >= 400 or not response.content:
-        logger.info("Cartel HTTP %s en %s", response.status_code, image_url)
-        return None
-    content_type = (response.headers.get("content-type") or "").split(";")[0].strip()
-    if content_type and not content_type.startswith("image/"):
-        # Algunos CDN no mandan content-type útil; aceptar por extensión.
-        if not _IMAGE_EXT.search(image_url):
-            logger.info("Respuesta no-imagen (%s) en %s", content_type, image_url)
-            return None
-        content_type = "image/jpeg"
-    if not content_type:
-        content_type = "image/jpeg"
-    if len(response.content) < 2000:
-        logger.info("Cartel demasiado pequeño (%s B) en %s", len(response.content), image_url)
-        return None
-    filename = _filename_for(image_url, content_type)
-    return response.content, filename, content_type
+    return fetch_image_bytes(http, image_url)

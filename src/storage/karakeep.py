@@ -81,6 +81,9 @@ class KaraKeepClient:
         tags: list[tuple[str, str]],
         list_key: str | None,
         created_at=None,
+        banner_image_url: str | None = None,
+        use_default_banner: bool = True,
+        scrape_ticket_banner: bool = True,
     ) -> KnownBookmark:
         body: dict = {
             "type": "link",
@@ -132,7 +135,15 @@ class KaraKeepClient:
             if created_at is not None:
                 self.set_created_at(known, created_at)
         else:
-            self.ensure_banner_after_crawl(bookmark_id, ticket_page_url=url)
+            if banner_image_url:
+                ok = self.ensure_banner_from_url(bookmark_id, banner_image_url)
+                if not ok and use_default_banner:
+                    self._set_default_banner(bookmark_id)
+            elif use_default_banner:
+                if scrape_ticket_banner:
+                    self.ensure_banner_after_crawl(bookmark_id, ticket_page_url=url)
+                else:
+                    self.ensure_default_banner_after_crawl(bookmark_id)
         return known
 
     def set_created_at(self, bookmark: KnownBookmark, created_at) -> str:
@@ -231,8 +242,17 @@ class KaraKeepClient:
         bookmark.tags = human + ai_tags
         return bookmark
 
-    def move_to_past(self, bookmark: KnownBookmark) -> None:
-        for key in ("interested", "maybe", "ignored", *sorted(GEO_LIST_KEYS)):
+    def move_to_past(
+        self,
+        bookmark: KnownBookmark,
+        *,
+        active_keys: frozenset[str] | set[str] | None = None,
+    ) -> None:
+        if active_keys is None:
+            to_remove = {"interested", "maybe", "ignored"} | set(GEO_LIST_KEYS)
+        else:
+            to_remove = set(active_keys)
+        for key in sorted(to_remove):
             if key in bookmark.list_keys:
                 self._remove_from_list(bookmark.id, key)
                 bookmark.list_keys.discard(key)
@@ -244,11 +264,21 @@ class KaraKeepClient:
         self._send("DELETE", f"/bookmarks/{bookmark.id}")
 
     def list_bookmarks(self, list_key: str) -> list[KnownBookmark]:
-        """Bookmarks de una lista gestionada (paginado)."""
+        """Bookmarks de una lista gestionada (paginado).
+
+        Si la lista está en ``list_names`` pero aún no existe en KaraKeep
+        (p. ej. primer dry-run), devuelve [] en lugar de fallar.
+        """
+        if list_key not in self.list_names:
+            raise KaraKeepError(f"Lista desconocida: {list_key}")
         self._resolve_lists(create_missing=False)
         list_id = self._list_ids.get(list_key)
         if not list_id:
-            raise KaraKeepError(f"Lista desconocida: {list_key}")
+            logger.info(
+                "Lista aún no existe en KaraKeep; se omite: %s",
+                self.list_names[list_key],
+            )
+            return []
         found: list[KnownBookmark] = []
         for bookmark in self._paginate(f"/lists/{list_id}/bookmarks"):
             known = self._parse_bookmark(bookmark, {list_key})
@@ -302,6 +332,71 @@ class KaraKeepClient:
             self._attach_asset(bookmark_id, asset_id, asset_type="bannerImage")
         self._verify_single_banner(bookmark_id, asset_id)
         return asset_id
+
+    def ensure_banner_from_url(self, bookmark_id: str, image_url: str) -> bool:
+        """Tras el crawl: banner desde URL directa (p. ej. imagen del RSS).
+
+        Devuelve True si se adjuntó; False si falló (el caller puede usar default).
+        """
+        from src.normalize.ticket_image import fetch_image_bytes
+
+        try:
+            crawl_status = self._wait_for_crawl_settled(bookmark_id)
+            if crawl_status is None:
+                return False
+            if crawl_status == "failure":
+                logger.info(
+                    "Crawler falló para %s; se intenta banner desde URL igualmente",
+                    bookmark_id,
+                )
+            poster = fetch_image_bytes(self.http, image_url)
+            if poster is None:
+                logger.info(
+                    "No se pudo usar imagen remota para banner %s: %s",
+                    bookmark_id,
+                    image_url,
+                )
+                return False
+            raw, filename, content_type = poster
+            asset_id = self.set_banner_image(
+                bookmark_id,
+                raw,
+                filename=filename,
+                content_type=content_type,
+            )
+            logger.info(
+                "Banner desde URL en %s (assetId=%s file=%s)",
+                bookmark_id,
+                asset_id,
+                filename,
+            )
+            return True
+        except Exception as exc:
+            logger.error(
+                "Fallo al asegurar banner desde URL del bookmark %s: %s",
+                bookmark_id,
+                exc,
+            )
+            return False
+
+    def ensure_default_banner_after_crawl(self, bookmark_id: str) -> None:
+        """Tras el crawl: solo el banner por defecto (sin scrapear cartel de entradas)."""
+        try:
+            crawl_status = self._wait_for_crawl_settled(bookmark_id)
+            if crawl_status is None:
+                return
+            if crawl_status == "failure":
+                logger.info(
+                    "Crawler falló para %s; se pone banner por defecto igualmente",
+                    bookmark_id,
+                )
+            self._set_default_banner(bookmark_id)
+        except Exception as exc:
+            logger.error(
+                "Fallo al asegurar banner por defecto del bookmark %s: %s",
+                bookmark_id,
+                exc,
+            )
 
     def ensure_banner_after_crawl(
         self,
@@ -510,7 +605,7 @@ class KaraKeepClient:
             list_id = existing.get(name)
             if not list_id:
                 if not create_missing:
-                    logger.info("Lista ausente; no se crea en esta ejecución: %s", name)
+                    logger.debug("Lista ausente; no se crea en esta ejecución: %s", name)
                     continue
                 created = self._send(
                     "POST",
@@ -520,6 +615,17 @@ class KaraKeepClient:
                 list_id = created["id"]
                 logger.info("Lista creada en KaraKeep: %s", name)
             self._list_ids[key] = list_id
+        if not create_missing:
+            missing = [
+                name
+                for key, name in self.list_names.items()
+                if key not in self._list_ids
+            ]
+            if missing:
+                logger.info(
+                    "Listas aún no existentes en KaraKeep (%s); no se crean en esta ejecución",
+                    len(missing),
+                )
 
     def _paginate(self, path: str) -> list[dict]:
         items: list[dict] = []
@@ -563,11 +669,19 @@ class KaraKeepClient:
 
     @staticmethod
     def _identity_url(note: str | None, *, fallback: str) -> str:
+        from src.normalize.urls import canonicalize_url
+
         concert = parse_stored_concert(note)
         if concert and concert.source_url:
+            if "coruna.gal" in concert.source_url.lower():
+                return canonicalize_url(
+                    concert.source_url, force_trailing_slash=False
+                ).rstrip("/")
             return event_key(concert.source_url)
         if "galiciaenconcierto.com" in fallback.lower():
             return event_key(fallback)
+        if "coruna.gal" in fallback.lower():
+            return canonicalize_url(fallback, force_trailing_slash=False).rstrip("/")
         return fallback
 
     def _keys_for_lists(self, lists: list[dict]) -> set[str]:

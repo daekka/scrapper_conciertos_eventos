@@ -144,3 +144,57 @@ def build_note(
     return _facts(concert) + "\n" + analysis + "\n" + _info(concert) + "\n" + _hidden(
         concert, stored, pending
     )
+
+
+def _coruna_facts(concert: Concert) -> str:
+    heading = concert.event_name or concert.title
+    description = strip_cookie_consent(concert.description) or ""
+    description_block = f"\n{description}\n" if description else "\n"
+    tipos = ", ".join(concert.categories) if concert.categories else "Sin tipología"
+    return (
+        f"# {heading}\n\n"
+        f"📅 **Cuándo:** {_when(concert)}\n"
+        f"📍 **Dónde:** {_place(concert)}\n"
+        f"🏷️ **Tipología:** {tipos}\n"
+        f"💰 **Precio:** {format_price_display(concert)}\n"
+        f"{description_block}"
+    )
+
+
+def _coruna_info(concert: Concert) -> str:
+    rows = [
+        ("Tipología", ", ".join(concert.categories) if concert.categories else None),
+        ("Recinto", concert.venue),
+        ("Ciudad", concert.city),
+        ("Provincia", concert.province),
+        ("Fuente", concert.source_url),
+        ("Detectado", concert.scraped_at.isoformat()),
+    ]
+    lines = "\n".join(f"- {label}: {value}" for label, value in rows if value)
+    return f"## Información\n{lines}\n"
+
+
+def _coruna_analysis(concert: Concert) -> str:
+    if concert.categories:
+        lines = "\n".join(f"- {item}" for item in concert.categories)
+        body = f"Tipologías detectadas:\n\n{lines}\n"
+    else:
+        body = "Sin tipología detectada; lista Otros.\n"
+    return f"<!-- gca:analysis-start -->\n## Tipología\n\n{body}\n<!-- gca:analysis-end -->\n"
+
+
+def build_coruna_note(concert: Concert, *, list_key: str) -> str:
+    """Nota del pipeline Coruña (sin LLM; tipología en lugar de géneros)."""
+    cleaned = strip_cookie_consent(concert.description)
+    if cleaned != concert.description:
+        concert.description = cleaned
+    return (
+        _coruna_facts(concert)
+        + "\n"
+        + _coruna_analysis(concert)
+        + "\n"
+        + _coruna_info(concert)
+        + "\n"
+        + _hidden(concert, list_key, pending=False)
+    )
+

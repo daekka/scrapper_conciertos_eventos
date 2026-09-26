@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+  <channel>
+    <title>Ocio y Cultura Coruña</title>
+    <item>
+      <title>Proxección: Docs do mes</title>
+      <link>https://www.coruna.gal/web/es/ociocultura/evento/docs-do-mes</link>
+      <itunes:keywords>Cine, Cultura, VOSE</itunes:keywords>
+      <media:content xmlns:media="http://search.yahoo.com/mrss/" type="image/jpeg" url="https://www.coruna.gal/IMG/docs.png"/>
+    </item>
+    <item>
+      <title>Recital de piano</title>
+      <link>https://www.coruna.gal/web/es/ociocultura/evento/recital-piano</link>
+      <itunes:keywords>Música, Concertos</itunes:keywords>
+    </item>
+    <item>
+      <title>Taller de cerámica</title>
+      <link>https://www.coruna.gal/web/es/ociocultura/evento/taller-ceramica</link>
+      <itunes:keywords>Talleres, Formación</itunes:keywords>
+    </item>
+  </channel>
+</rss>

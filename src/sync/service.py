@@ -651,7 +651,7 @@ class SyncService:
                 for bookmark in self.repo.list_bookmarks("past"):
                     candidates[bookmark.id] = bookmark
             except KaraKeepError as exc:
-                logger.error("No se pudo cargar la lista Pasados para purga: %s", exc)
+                logger.info("Lista Pasados no disponible para purga: %s", exc)
         deleted = 0
         retention = self.settings.past_retention_days
         for bookmark in list(candidates.values()):
