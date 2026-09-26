@@ -56,6 +56,7 @@ Variables (`.env.example`):
 | `assets/concert-default.png` | Banner por defecto |
 | `tests/` + `tests/fixtures/` | pytest |
 | `var/` | Runtime local (cache/state; no versionar secretos) |
+| `logs/cron.log` | Log del cron; retención automática **3 días** (`TimedRotatingFileHandler` + poda al arrancar) |
 
 ## Pipeline de sync
 
@@ -209,6 +210,8 @@ No está instalado por defecto. Ejemplo con `flock`:
 ```
 
 Crear `var/state` antes. Usar rutas absolutas y el intérprete de `.venv`.
+
+El proceso escribe en `logs/cron.log` cuando stdout no es TTY y el fichero es escribible (típico del cron como root). Retiene **3 días** de calendario: poda líneas viejas al arrancar y rota a medianoche (`backupCount=2`). El `>>` del cron es opcional; si se deja, no duplica líneas porque en no-TTY no se usa StreamHandler.
 
 ## Dónde tocar qué
 
