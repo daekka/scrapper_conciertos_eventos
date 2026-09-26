@@ -85,8 +85,10 @@ class MemoryRepo:
         return bookmark
 
     def move_to_past(self, bookmark):
+        from src.normalize.geo import GEO_LIST_KEYS
+
         self.mutations.append("move_to_past")
-        bookmark.list_keys -= {"interested", "maybe", "ignored"}
+        bookmark.list_keys -= {"interested", "maybe", "ignored"} | GEO_LIST_KEYS
         bookmark.list_keys.add("past")
 
     def delete_bookmark(self, bookmark):
@@ -364,9 +366,30 @@ def test_past_concert_moves_list_without_deleting():
     repo = MemoryRepo([bookmark])
     source = FakeSource([], {})
     assert _service(source, repo, FakeClassifier(_result())).run(now=NOW) == 0
-    assert bookmark.list_keys == {"past", GEO_VIGO}
+    assert bookmark.list_keys == {"past"}
     assert bookmark.id == "old"
     assert "delete" not in repo.mutations
+
+
+def test_detach_geo_from_already_past_bookmark():
+    from src.normalize.geo import GEO_VIGO
+    from src.storage.bookmark_note import build_note
+
+    event = _event(date=date(2026, 9, 20), start_time=time(20, 0))
+    note = build_note(_concert(event), _result(), pending=False)
+    bookmark = KnownBookmark(
+        id="already-past",
+        url=event.source_url,
+        title=event.title,
+        note=note,
+        tags=[BookmarkTag(name="concert", attached_by="ai")],
+        list_keys={"past", GEO_VIGO},
+    )
+    repo = MemoryRepo([bookmark])
+    source = FakeSource([], {})
+    assert _service(source, repo, FakeClassifier(_result())).run(now=NOW) == 0
+    assert bookmark.list_keys == {"past"}
+    assert "remove_from_list" in repo.mutations
 
 
 def test_stale_past_concert_is_deleted():
@@ -403,7 +426,8 @@ def test_new_past_concert_skips_classifier():
     assert PENDING_TAG not in {tag.name for tag in bookmark.tags}
     from src.normalize.geo import GEO_LIST_KEYS
 
-    assert len(bookmark.list_keys & GEO_LIST_KEYS) == 1
+    assert not (bookmark.list_keys & GEO_LIST_KEYS)
+    assert bookmark.list_keys == {"past"}
 
 
 def test_new_stale_concert_is_not_created():
@@ -481,7 +505,7 @@ def test_dry_run_logs_planned_writes_including_past_move(caplog):
     assert classifier.calls == 0
     assert "[DRY-RUN] Crearía bookmark:" in caplog.text
     assert "Conciertos · Pasados" in caplog.text
-    assert "lista geográfica" in caplog.text.lower() or "Añadiría a lista geográfica" in caplog.text
+    assert "Añadiría a lista geográfica" not in caplog.text
     assert "[DRY-RUN] Tags:" in caplog.text
     assert "se omite clasificación" in caplog.text
     assert repo.mutations == []

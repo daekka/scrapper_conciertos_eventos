@@ -232,7 +232,7 @@ class KaraKeepClient:
         return bookmark
 
     def move_to_past(self, bookmark: KnownBookmark) -> None:
-        for key in ("interested", "maybe", "ignored"):
+        for key in ("interested", "maybe", "ignored", *sorted(GEO_LIST_KEYS)):
             if key in bookmark.list_keys:
                 self._remove_from_list(bookmark.id, key)
                 bookmark.list_keys.discard(key)

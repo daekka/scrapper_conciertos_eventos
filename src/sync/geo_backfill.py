@@ -64,6 +64,25 @@ class GeoBackfillService:
             logger.warning("Bookmark agente sin gca:concert; se omite geo: %s", bookmark.id)
             return
         stats.managed += 1
+        if "past" in bookmark.list_keys:
+            geos = bookmark.list_keys & GEO_LIST_KEYS
+            if not geos:
+                stats.noop += 1
+                return
+            if dry_run:
+                stats.would_remove += len(geos)
+                for old in sorted(geos):
+                    logger.info(
+                        "[DRY-RUN] Quitaría %s de %s (pasados sin geo)",
+                        bookmark.url,
+                        self.settings.geo_lists.get(old, old),
+                    )
+                return
+            for old in sorted(geos):
+                self.repo.remove_from_list(bookmark, old)
+                stats.removed += 1
+            logger.info("Geo quitada de pasados: %s", bookmark.url)
+            return
         geo_key = geo_list_key_for_concert(concert)
         stats.distribution[geo_key] += 1
         managed = bookmark.list_keys & GEO_LIST_KEYS

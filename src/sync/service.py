@@ -53,6 +53,7 @@ class RunStats:
     skipped_unchanged: int = 0
     details_fetched: int = 0
     past: int = 0
+    past_geo_cleared: int = 0
     deleted: int = 0
     errors: int = 0
     pending: int = 0
@@ -209,7 +210,8 @@ class SyncService:
                     list_key=list_key,
                 )
                 if created is not None:
-                    self._ensure_geo(created, concert, dry_run=dry_run)
+                    if list_key != "past":
+                        self._ensure_geo(created, concert, dry_run=dry_run)
                     self._ensure_created_at(created, concert, dry_run=dry_run)
                     self._ensure_card_url(created, concert, dry_run=dry_run)
                     self._ensure_reader_content(created, concert, dry_run=dry_run)
@@ -323,6 +325,12 @@ class SyncService:
                     logger.error("No se pudo reclasificar %s: %s", bookmark.id, exc)
 
         stats.past += self._move_past(watched, moment, dry_run=dry_run)
+        stats.past_geo_cleared += self._detach_geo_from_past(
+            index=index,
+            watched=watched,
+            dry_run=dry_run,
+            limit=limit,
+        )
         stats.deleted += self._purge_stale(
             index=index,
             watched=watched,
@@ -342,8 +350,9 @@ class SyncService:
     def _store_new(self, *, dry_run: bool, concert: Concert, note: str, tags, list_key: str | None):
         tag_names = ", ".join(name for name, _ in tags) or "(ninguno)"
         list_name = self.settings.lists.get(list_key) if list_key else None
-        geo_key = geo_list_key_for_concert(concert)
-        geo_name = self.settings.geo_lists.get(geo_key, geo_key)
+        assign_geo = list_key != "past"
+        geo_key = geo_list_key_for_concert(concert) if assign_geo else None
+        geo_name = self.settings.geo_lists.get(geo_key, geo_key) if geo_key else None
         card_url = bookmark_card_url(
             source_url=concert.source_url, ticket_url=concert.ticket_url
         )
@@ -355,12 +364,14 @@ class SyncService:
                 logger.info("[DRY-RUN] createdAt del concierto: %s", created_at.isoformat())
             if list_name:
                 logger.info("[DRY-RUN] Añadiría a lista: %s", list_name)
-            logger.info("[DRY-RUN] Añadiría a lista geográfica: %s", geo_name)
+            if geo_name:
+                logger.info("[DRY-RUN] Añadiría a lista geográfica: %s", geo_name)
             logger.info("[DRY-RUN] Tags: %s", tag_names)
             keys = set()
             if list_key:
                 keys.add(list_key)
-            keys.add(geo_key)
+            if geo_key:
+                keys.add(geo_key)
             return KnownBookmark(
                 id=f"dry-run-{concert.source_id}",
                 url=concert.source_url,
@@ -381,6 +392,8 @@ class SyncService:
         )
 
     def _ensure_geo(self, bookmark: KnownBookmark, concert: Concert, *, dry_run: bool) -> str:
+        if "past" in bookmark.list_keys:
+            return "noop"
         geo_key = geo_list_key_for_concert(concert)
         geo_name = self.settings.geo_lists.get(geo_key, geo_key)
         managed = bookmark.list_keys & GEO_LIST_KEYS
@@ -571,6 +584,53 @@ class SyncService:
             moved += 1
         return moved
 
+    def _detach_geo_from_past(
+        self,
+        *,
+        index: dict[str, KnownBookmark],
+        watched: list[KnownBookmark],
+        dry_run: bool,
+        limit: int | None,
+    ) -> int:
+        assert self.repo is not None
+        candidates: dict[str, KnownBookmark] = {}
+        for bookmark in index.values():
+            candidates[bookmark.id] = bookmark
+        for bookmark in watched:
+            candidates[bookmark.id] = bookmark
+        if limit is not None:
+            try:
+                for bookmark in self.repo.list_bookmarks("past"):
+                    current = candidates.get(bookmark.id)
+                    if current is None:
+                        candidates[bookmark.id] = bookmark
+                    else:
+                        current.list_keys.add("past")
+                for geo_key in sorted(GEO_LIST_KEYS):
+                    for bookmark in self.repo.list_bookmarks(geo_key):
+                        current = candidates.get(bookmark.id)
+                        if current is None:
+                            candidates[bookmark.id] = bookmark
+                        else:
+                            current.list_keys.add(geo_key)
+            except KaraKeepError as exc:
+                logger.error("No se pudo cargar listas para limpiar geo de pasados: %s", exc)
+        cleared = 0
+        for bookmark in list(candidates.values()):
+            if "past" not in bookmark.list_keys:
+                continue
+            geos = bookmark.list_keys & GEO_LIST_KEYS
+            if not geos:
+                continue
+            if dry_run:
+                logger.info("[DRY-RUN] Quitaría geo de pasados: %s", bookmark.url)
+            else:
+                for key in sorted(geos):
+                    self.repo.remove_from_list(bookmark, key)
+                logger.info("Geo quitada de pasados: %s", bookmark.url)
+            cleared += 1
+        return cleared
+
     def _purge_stale(
         self,
         *,
@@ -627,8 +687,8 @@ class SyncService:
         elapsed = (datetime.now(timezone.utc) - started).total_seconds()
         logger.info(
             "Fin: encontrados=%s seleccionados=%s nuevos=%s actualizados=%s clasificados=%s "
-            "ignorados=%s sin_cambios=%s fichas=%s pasados=%s borrados=%s pendientes=%s "
-            "errores=%s duración=%.2fs",
+            "ignorados=%s sin_cambios=%s fichas=%s pasados=%s geo_pasados=%s borrados=%s "
+            "pendientes=%s errores=%s duración=%.2fs",
             stats.discovered,
             stats.selected,
             stats.new,
@@ -638,6 +698,7 @@ class SyncService:
             stats.skipped_unchanged,
             stats.details_fetched,
             stats.past,
+            stats.past_geo_cleared,
             stats.deleted,
             stats.pending,
             stats.errors,

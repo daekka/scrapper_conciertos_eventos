@@ -1,7 +1,7 @@
 from datetime import date, datetime, time, timezone
 
 from src.config import load_settings
-from src.normalize.geo import GEO_ACORUNA, GEO_LIST_KEYS, GEO_OTHER, GEO_VIGO
+from src.normalize.geo import GEO_ACORUNA, GEO_LIST_KEYS, GEO_OTHER
 from src.storage.bookmark_note import build_note
 from src.storage.models import BookmarkTag, KnownBookmark
 from src.sync.geo_backfill import GeoBackfillService, is_agent_managed
@@ -97,7 +97,7 @@ def test_backfill_dry_run_no_writes_and_preserves_affinity():
     assert bookmark.list_keys == {"interested"}
 
 
-def test_backfill_moves_wrong_geo_keeps_past():
+def test_backfill_strips_geo_from_past():
     concert = _concert("Vigo")
     note = build_note(concert, _result(), pending=False)
     bookmark = KnownBookmark(
@@ -110,11 +110,10 @@ def test_backfill_moves_wrong_geo_keeps_past():
     )
     repo = MemoryRepo([bookmark])
     stats = GeoBackfillService(repo=repo, settings=load_settings()).run(dry_run=False)
-    assert stats.added == 1
     assert stats.removed == 1
-    assert bookmark.list_keys == {"past", GEO_VIGO}
+    assert stats.added == 0
+    assert bookmark.list_keys == {"past"}
     assert "remove:geo_other" in repo.mutations
-    assert "assign:geo_vigo" in repo.mutations
 
 
 def test_backfill_idempotent_noop():
